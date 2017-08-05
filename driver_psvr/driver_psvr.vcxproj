@@ -158,11 +158,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="driverlog.cpp" />
+    <ClCompile Include="DriverLog.cpp" />
     <ClCompile Include="driver_psvr.cpp" />
+    <ClCompile Include="ServerDriver.cpp" />
+    <ClCompile Include="Watchdog.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="driverlog.h" />
+    <ClInclude Include="DeviceDriver.h" />
+    <ClInclude Include="DriverLog.h" />
+    <ClInclude Include="ServerDriver.h" />
+    <ClInclude Include="Watchdog.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
