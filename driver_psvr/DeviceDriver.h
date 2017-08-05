@@ -3,6 +3,14 @@
 #include <openvr_driver.h>
 #include "DriverLog.h"
 
+#ifdef _WINDOWS
+#include <dxgi.h>
+#endif
+
+#define PSVR_EDID_VENDOR 0xD94D
+#define PSVR_EDID_PRODUCT 0xB403
+#define PSVR_EDID_STRING L"SNYB403"
+
 using namespace vr;
 
 class CPSVRDeviceDriver : public vr::ITrackedDeviceServerDriver, public vr::IVRDisplayComponent
@@ -64,6 +72,7 @@ public:
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
 
+		FindHmdDisplay(PSVR_EDID_STRING, &m_pDisplayOutput);
 
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_RenderModelName_String, m_sModelNumber.c_str());
@@ -114,6 +123,9 @@ public:
 			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceNotReady_String, "{psvr}/icons/headset_psvr_status_error.png");
 			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{psvr}/icons/headset_psvr_status_standby.png");
 			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{psvr}/icons/headset_psvr_status_ready_low.png");
+
+			vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_EdidVendorID_Int32, PSVR_EDID_VENDOR);
+			vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_EdidProductID_Int32, PSVR_EDID_PRODUCT);
 		}
 
 		return VRInitError_None;
@@ -156,16 +168,32 @@ public:
 		*pnY = m_nWindowY;
 		*pnWidth = m_nWindowWidth;
 		*pnHeight = m_nWindowHeight;
+
+#ifdef _WINDOWS
+		DXGI_OUTPUT_DESC desc;
+		if (m_pDisplayOutput && SUCCEEDED(m_pDisplayOutput->GetDesc(&desc))) {
+			*pnX = desc.DesktopCoordinates.left;
+			*pnY = desc.DesktopCoordinates.top;
+			*pnWidth = desc.DesktopCoordinates.right - desc.DesktopCoordinates.left;
+			*pnHeight = desc.DesktopCoordinates.bottom - desc.DesktopCoordinates.top;
+		}
+#endif
 	}
 
 	virtual bool IsDisplayOnDesktop()
 	{
-		return true;
+#ifdef _WINDOWS
+		DXGI_OUTPUT_DESC desc;
+		if (m_pDisplayOutput && SUCCEEDED(m_pDisplayOutput->GetDesc(&desc)))
+			return !!desc.AttachedToDesktop;
+#endif
+		// The headset is either in Direct Mode or disconnected.
+		return false;
 	}
 
 	virtual bool IsDisplayRealDisplay()
 	{
-		return false;
+		return true;
 	}
 
 	virtual void GetRecommendedRenderTargetSize(uint32_t *pnWidth, uint32_t *pnHeight)
@@ -255,7 +283,7 @@ private:
 	float m_flDisplayFrequency;
 	float m_flIPD;
 
-	inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y, double z)
+	inline HmdQuaternion_t HmdQuaternion_Init(double w, double x, double y, double z) const
 	{
 		HmdQuaternion_t quat;
 		quat.w = w;
@@ -265,7 +293,7 @@ private:
 		return quat;
 	}
 
-	inline void HmdMatrix_SetIdentity(HmdMatrix34_t *pMatrix)
+	inline void HmdMatrix_SetIdentity(HmdMatrix34_t *pMatrix) const
 	{
 		pMatrix->m[0][0] = 1.f;
 		pMatrix->m[0][1] = 0.f;
@@ -280,4 +308,51 @@ private:
 		pMatrix->m[2][2] = 1.f;
 		pMatrix->m[2][3] = 0.f;
 	}
+
+#ifdef _WINDOWS
+	IDXGIOutput* m_pDisplayOutput;
+
+	bool CPSVRDeviceDriver::FindHmdDisplay(const wchar_t* pSerialNumber, IDXGIOutput** ppOutputDesc) const
+	{
+		IDXGIFactory1 * pFactory;
+		if (FAILED(CreateDXGIFactory1(__uuidof(IDXGIFactory1), (void**)&pFactory)))
+			return false;
+
+		DISPLAY_DEVICE display;
+		memset(&display, 0, sizeof(DISPLAY_DEVICE));
+		display.cb = sizeof(display);
+
+		bool found = false;
+		DXGI_OUTPUT_DESC desc;
+		IDXGIAdapter* pAdapter;
+		IDXGIOutput* pOutput;
+
+		// Search all adapters for the headset display
+		for (uint32_t i = 0; pFactory->EnumAdapters(i, &pAdapter) != DXGI_ERROR_NOT_FOUND && !found; ++i)
+		{
+			for (uint32_t j = 0; pAdapter->EnumOutputs(j, &pOutput) != DXGI_ERROR_NOT_FOUND && !found; ++j)
+			{
+				if (SUCCEEDED(pOutput->GetDesc(&desc)) && EnumDisplayDevices(desc.DeviceName, 0, &display, 0))
+				{
+					// Check if this display belongs to the headset by looking for the serial number in the DeviceID
+					if (wcsstr(display.DeviceID, pSerialNumber))
+					{
+						// Keep the reference count as we will return this interface
+						found = true;
+						*ppOutputDesc = pOutput;
+					}
+					else
+					{
+						// Decrement reference count to avoid leaking this interface
+						pOutput->Release();
+					}
+				}
+			}
+			pAdapter->Release();
+		}
+		pFactory->Release();
+
+		return found;
+	}
+#endif
 };
