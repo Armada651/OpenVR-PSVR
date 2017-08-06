@@ -1,12 +1,14 @@
 #pragma once
 
-#include <openvr_driver.h>
 #include "DriverLog.h"
 #include "PSVR.h"
 
 #ifdef _WINDOWS
 #include <dxgi.h>
 #endif
+
+#include <openvr_driver.h>
+#include <libusb.h>
 
 using namespace vr;
 
@@ -28,6 +30,7 @@ public:
 
 	CPSVRDeviceDriver()
 	{
+		m_pDeviceHandle = nullptr;
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 		m_ulPropertyContainer = vr::k_ulInvalidPropertyContainer;
 
@@ -68,8 +71,29 @@ public:
 	{
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
+		m_pDeviceHandle = libusb_open_device_with_vid_pid(NULL, psvr::USBVendor, psvr::USBProduct);
+		if (!m_pDeviceHandle)
+			return VRInitError_Init_HmdNotFound;
 
 		FindHmdDisplay(psvr::EDIDString, &m_pDisplayOutput);
+
+		libusb_claim_interface(m_pDeviceHandle, psvr::InterfaceControl);
+
+		{
+			psvr::Report report = {};
+			report.ReportID = psvr::SetHeadsetStateReportID;
+			report.SetHeadsetState.HeadsetOn = true;
+			report.DataLength = sizeof(psvr::SetHeadsetStateReport);
+			SendReport(report);
+		}
+
+		{
+			psvr::Report report = {};
+			report.ReportID = psvr::SetVRModeReportID;
+			report.SetVRMode.Enabled = true;
+			report.DataLength = sizeof(psvr::SetVRModeReport);
+			SendReport(report);
+		}
 
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_RenderModelName_String, m_sModelNumber.c_str());
@@ -130,6 +154,18 @@ public:
 
 	virtual void Deactivate()
 	{
+		{
+			psvr::Report report = {};
+			report.ReportID = psvr::SetVRModeReportID;
+			report.SetVRMode.Enabled = false;
+			report.DataLength = sizeof(psvr::SetVRModeReport);
+			SendReport(report);
+		}
+
+		libusb_release_interface(m_pDeviceHandle, psvr::InterfaceControl);
+		libusb_close(m_pDeviceHandle);
+
+		m_pDeviceHandle = nullptr;
 		m_unObjectId = vr::k_unTrackedDeviceIndexInvalid;
 	}
 
@@ -150,6 +186,11 @@ public:
 
 	virtual void PowerOff()
 	{
+		psvr::Report report = {};
+		report.ReportID = psvr::SetHeadsetStateReportID;
+		report.SetHeadsetState.HeadsetOn = false;
+		report.DataLength = sizeof(psvr::SetHeadsetStateReport);
+		SendReport(report);
 	}
 
 	/** debug request from a client */
@@ -264,6 +305,7 @@ public:
 	std::string GetSerialNumber() const { return m_sSerialNumber; }
 
 private:
+	libusb_device_handle* m_pDeviceHandle;
 	vr::TrackedDeviceIndex_t m_unObjectId;
 	vr::PropertyContainerHandle_t m_ulPropertyContainer;
 
@@ -352,4 +394,24 @@ private:
 		return found;
 	}
 #endif
+
+	bool SendReport(psvr::Report& report)
+	{
+		report.DataStart = 0xAA; // Ensure this is always 0xAA
+		int res = libusb_interrupt_transfer(m_pDeviceHandle, psvr::EndpointControl | LIBUSB_ENDPOINT_OUT, (uint8_t*)&report, report.DataLength + psvr::ReportHeaderSize, nullptr, 0);
+		if (res < 0)
+		{
+			DriverLog("DeviceDriver: Failed to send command report (%d).\n", res);
+			return false;
+		}
+
+		res = libusb_interrupt_transfer(m_pDeviceHandle, psvr::EndpointControl | LIBUSB_ENDPOINT_IN, (uint8_t*)&report, sizeof(report), nullptr, 0);
+		if (res < 0)
+		{
+			DriverLog("DeviceDriver: Failed to read command response (%d).\n", res);
+			return false;
+		}
+
+		return report.CommandStatus == 0;
+	}
 };

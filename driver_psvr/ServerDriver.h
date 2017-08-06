@@ -7,8 +7,7 @@ class CServerDriver_PSVR : public vr::IServerTrackedDeviceProvider
 {
 public:
 	CServerDriver_PSVR()
-		: m_pNullHmdLatest(NULL)
-		, m_bEnableNullDriver(false)
+		: m_pPSVRHmdLatest(nullptr)
 	{
 	}
 
@@ -21,7 +20,5 @@ public:
 	virtual void LeaveStandby() {}
 
 private:
-	CPSVRDeviceDriver *m_pNullHmdLatest;
-
-	bool m_bEnableNullDriver;
+	CPSVRDeviceDriver *m_pPSVRHmdLatest;
 };

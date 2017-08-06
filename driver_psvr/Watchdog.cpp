@@ -26,9 +26,9 @@ void WatchdogThreadFunction()
 	psvr::StatusMask lastStatus = psvr::NoStatus;
 	while (!g_bExiting)
 	{
-		psvr::DeviceStatusReport report;
+		psvr::DeviceStatusReport report = {};
 		int bytes = 0;
-		int res = libusb_interrupt_transfer(handle, psvr::DeviceStatusReportEndpoint, (uint8_t*)&report, sizeof(report), &bytes, 0);
+		int res = libusb_interrupt_transfer(handle, psvr::EndpointControl | LIBUSB_ENDPOINT_IN, (uint8_t*)&report, sizeof(report), &bytes, 0);
 
 		if (res < 0)
 		{

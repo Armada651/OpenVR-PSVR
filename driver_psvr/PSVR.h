@@ -16,6 +16,8 @@ static const uint16_t InterfaceSensor = 4;
 static const uint16_t InterfaceControl = 5;
 static const uint16_t InterfaceControl2 = 8;
 
+static const uint16_t EndpointControl = 4;
+
 enum StatusMask
 {
 	NoStatus = 0,
@@ -40,6 +42,44 @@ struct DeviceStatusReport
 };
 
 static const uint8_t DeviceStatusReportID = 0xF0;
-static const uint8_t DeviceStatusReportEndpoint = 0x84;
+
+struct SetVRTrackingReport
+{
+	uint32_t UnknownA;
+	uint32_t UnknownB;
+};
+
+static const uint32_t UnknownEnableVRTracking = 0xFFFFFF00;
+static const int32_t SetVRTrackingReportID = 0x11;
+
+struct SetHeadsetStateReport
+{
+	uint32_t HeadsetOn;
+};
+
+static const int32_t SetHeadsetStateReportID = 0x17;
+
+struct SetVRModeReport
+{
+	uint32_t Enabled;
+};
+
+static const int32_t SetVRModeReportID = 0x23;
+
+struct Report
+{
+	uint8_t ReportID;
+	uint8_t CommandStatus;
+	uint8_t DataStart;
+	uint8_t DataLength;
+	union {
+		SetVRTrackingReport SetVRTracking;
+		SetHeadsetStateReport SetHeadsetState;
+		SetVRModeReport SetVRMode;
+		uint8_t Array[100];
+	};
+};
+
+static const size_t ReportHeaderSize = 4;
 
 }
