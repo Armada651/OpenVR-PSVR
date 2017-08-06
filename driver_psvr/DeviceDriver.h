@@ -162,6 +162,14 @@ public:
 			SendReport(report);
 		}
 
+		{
+			psvr::Report report = {};
+			report.ReportID = psvr::SetHeadsetStateReportID;
+			report.SetHeadsetState.HeadsetOn = false;
+			report.DataLength = sizeof(psvr::SetHeadsetStateReport);
+			SendReport(report);
+		}
+
 		libusb_release_interface(m_pDeviceHandle, psvr::InterfaceControl);
 		libusb_close(m_pDeviceHandle);
 
@@ -182,15 +190,6 @@ public:
 
 		// override this to add a component to a driver
 		return NULL;
-	}
-
-	virtual void PowerOff()
-	{
-		psvr::Report report = {};
-		report.ReportID = psvr::SetHeadsetStateReportID;
-		report.SetHeadsetState.HeadsetOn = false;
-		report.DataLength = sizeof(psvr::SetHeadsetStateReport);
-		SendReport(report);
 	}
 
 	/** debug request from a client */
@@ -412,6 +411,12 @@ private:
 			return false;
 		}
 
-		return report.CommandStatus == 0;
+		if (report.CommandStatus != 0)
+		{
+			DriverLog("DeviceDriver: Report %x status failed (%d).\n", report.ReportID, report.CommandStatus);
+			return false;
+		}
+
+		return true;
 	}
 };
