@@ -35,5 +35,8 @@
     <ClInclude Include="ServerDriver.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="PSVR.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

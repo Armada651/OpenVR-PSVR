@@ -1,3 +1,6 @@
 [submodule "openvr"]
 	path = openvr
 	url = https://github.com/ValveSoftware/openvr.git
+[submodule "libusb"]
+	path = libusb
+	url = https://github.com/libusb/libusb.git

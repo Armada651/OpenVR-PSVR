@@ -1,14 +1,12 @@
 #include "Watchdog.h"
 #include "DriverLog.h"
+#include "PSVR.h"
 
 #include <openvr_driver.h>
+#include <libusb.h>
 #include <vector>
 #include <thread>
 #include <chrono>
-
-#if defined( _WINDOWS )
-#include <windows.h>
-#endif
 
 using namespace vr;
 
@@ -16,37 +14,55 @@ bool g_bExiting = false;
 
 void WatchdogThreadFunction()
 {
+	libusb_device_handle* handle = libusb_open_device_with_vid_pid(NULL, psvr::USBVendor, psvr::USBProduct);
+	if (!handle)
+	{
+		DriverLog("Watchdog: PSVR headset not found");
+		return;
+	}
+
+	libusb_claim_interface(handle, psvr::InterfaceControl);
+
+	psvr::StatusMask lastStatus = psvr::NoStatus;
 	while (!g_bExiting)
 	{
-#if defined( _WINDOWS )
-		// on windows send the event when the Y key is pressed.
-		if ((0x01 & GetAsyncKeyState('Y')) != 0)
+		psvr::DeviceStatusReport report;
+		int bytes = 0;
+		int res = libusb_interrupt_transfer(handle, psvr::DeviceStatusReportEndpoint, (uint8_t*)&report, sizeof(report), &bytes, 0);
+
+		if (res < 0)
 		{
-			// Y key was pressed. 
-			vr::VRWatchdogHost()->WatchdogWakeUp();
+			DriverLog("Watchdog: Interrupt transfer failed (%d).", res);
+			break;
 		}
-		std::this_thread::sleep_for(std::chrono::microseconds(500));
-#else
-		// for the other platforms, just send one every five seconds
-		std::this_thread::sleep_for(std::chrono::seconds(5));
-		vr::VRWatchdogHost()->WatchdogWakeUp();
-#endif
+
+		if (bytes != sizeof(report) || report.ReportID != psvr::DeviceStatusReportID)
+			continue;
+		
+		if (!(lastStatus & psvr::HeadsetOn) && report.Status & psvr::HeadsetOn)
+			vr::VRWatchdogHost()->WatchdogWakeUp();
+		lastStatus = report.Status;
 	}
+
+	libusb_release_interface(handle, psvr::InterfaceControl);
+	libusb_close(handle);
 }
 
 EVRInitError CWatchdogDriver_PSVR::Init(vr::IVRDriverContext *pDriverContext)
 {
 	VR_INIT_WATCHDOG_DRIVER_CONTEXT(pDriverContext);
 	InitDriverLog(vr::VRDriverLog());
+	if (libusb_init(NULL) < 0)
+	{
+		DriverLog("Watchdog: Unable to initialize libusb\n");
+		return VRInitError_Driver_Failed;
+	}
 
-	// Watchdog mode on Windows starts a thread that listens for the 'Y' key on the keyboard to 
-	// be pressed. A real driver should wait for a system button event or something else from the 
-	// the hardware that signals that the VR system should start up.
 	g_bExiting = false;
 	m_pWatchdogThread = new std::thread(WatchdogThreadFunction);
 	if (!m_pWatchdogThread)
 	{
-		DriverLog("Unable to create watchdog thread\n");
+		DriverLog("Watchdog: Unable to create watchdog thread\n");
 		return VRInitError_Driver_Failed;
 	}
 
@@ -64,5 +80,6 @@ void CWatchdogDriver_PSVR::Cleanup()
 		m_pWatchdogThread = nullptr;
 	}
 
+	libusb_exit(NULL);
 	CleanupDriverLog();
 }

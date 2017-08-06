@@ -2,14 +2,11 @@
 
 #include <openvr_driver.h>
 #include "DriverLog.h"
+#include "PSVR.h"
 
 #ifdef _WINDOWS
 #include <dxgi.h>
 #endif
-
-#define PSVR_EDID_VENDOR 0xD94D
-#define PSVR_EDID_PRODUCT 0xB403
-#define PSVR_EDID_STRING L"SNYB403"
 
 using namespace vr;
 
@@ -72,7 +69,7 @@ public:
 		m_unObjectId = unObjectId;
 		m_ulPropertyContainer = vr::VRProperties()->TrackedDeviceToPropertyContainer(m_unObjectId);
 
-		FindHmdDisplay(PSVR_EDID_STRING, &m_pDisplayOutput);
+		FindHmdDisplay(psvr::EDIDString, &m_pDisplayOutput);
 
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_ModelNumber_String, m_sModelNumber.c_str());
 		vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, Prop_RenderModelName_String, m_sModelNumber.c_str());
@@ -124,8 +121,8 @@ public:
 			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceStandby_String, "{psvr}/icons/headset_psvr_status_standby.png");
 			vr::VRProperties()->SetStringProperty(m_ulPropertyContainer, vr::Prop_NamedIconPathDeviceAlertLow_String, "{psvr}/icons/headset_psvr_status_ready_low.png");
 
-			vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_EdidVendorID_Int32, PSVR_EDID_VENDOR);
-			vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_EdidProductID_Int32, PSVR_EDID_PRODUCT);
+			vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_EdidVendorID_Int32, psvr::EDIDVendor);
+			vr::VRProperties()->SetInt32Property(m_ulPropertyContainer, vr::Prop_EdidProductID_Int32, psvr::EDIDProduct);
 		}
 
 		return VRInitError_None;
