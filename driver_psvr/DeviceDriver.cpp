@@ -225,10 +225,12 @@ void CPSVRDeviceDriver::GetEyeOutputViewport(EVREye eEye, uint32_t *pnX, uint32_
 
 void CPSVRDeviceDriver::GetProjectionRaw(EVREye eEye, float *pfLeft, float *pfRight, float *pfTop, float *pfBottom)
 {
-	*pfLeft = -1.0;
-	*pfRight = 1.0;
-	*pfTop = -1.0;
-	*pfBottom = 1.0;
+	float halfFov = (float)tan((100.0 * M_PI_180) / 2.0);
+
+	*pfLeft = -halfFov;
+	*pfRight = halfFov;
+	*pfTop = -halfFov;
+	*pfBottom = halfFov;
 }
 
 DistortionCoordinates_t CPSVRDeviceDriver::ComputeDistortion(EVREye eEye, float fU, float fV)
