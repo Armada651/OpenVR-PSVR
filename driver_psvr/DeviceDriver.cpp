@@ -252,6 +252,7 @@ DriverPose_t CPSVRDeviceDriver::GetPose()
 	int res = libusb_interrupt_transfer(m_pDeviceHandle, psvr::EndpointSensor | LIBUSB_ENDPOINT_IN, (uint8_t*)&report, sizeof(report), &bytes, 0);
 
 	DriverPose_t pose = { 0 };
+	pose.poseTimeOffset = 0.005f;
 	pose.poseIsValid = true;
 	pose.result = TrackingResult_Running_OK;
 	pose.deviceIsConnected = true;
