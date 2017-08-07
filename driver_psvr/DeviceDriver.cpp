@@ -273,6 +273,9 @@ DriverPose_t CPSVRDeviceDriver::GetPose()
 	pose.qWorldFromDriverRotation = HmdQuaternion_Init(-0.5, 0.5, 0.5, 0.5);
 	pose.qDriverFromHeadRotation = HmdQuaternion_Init(0, M_SQRT2_2, M_SQRT2_2, 0);
 	pose.qRotation = HmdQuaternion_Init(Madgwick::q0, Madgwick::q1, Madgwick::q2, Madgwick::q3);
+	pose.vecAngularAcceleration[0] = gyro[0];
+	pose.vecAngularAcceleration[1] = gyro[1];
+	pose.vecAngularAcceleration[2] = gyro[2];
 
 	return pose;
 }
