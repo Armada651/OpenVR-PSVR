@@ -5,6 +5,8 @@
 namespace psvr
 {
 
+#pragma pack(push, 1)
+
 static const uint16_t EDIDVendor = 0xD94D;
 static const uint16_t EDIDProduct = 0xB403;
 static const wchar_t* EDIDString = L"SNYB403";
@@ -16,6 +18,7 @@ static const uint16_t InterfaceSensor = 4;
 static const uint16_t InterfaceControl = 5;
 static const uint16_t InterfaceControl2 = 8;
 
+static const uint16_t EndpointSensor = 3;
 static const uint16_t EndpointControl = 4;
 
 enum StatusMask
@@ -26,7 +29,7 @@ enum StatusMask
 	Cinematic = (1 << 2),
 	UnknownA = (1 << 3),
 	Headphones = (1 << 4),
-	Mute = (1 << 5),
+	Muted = (1 << 5),
 	CEC = (1 << 6),
 	UnknownC = (1 << 7),
 };
@@ -81,5 +84,48 @@ struct Report
 };
 
 static const size_t ReportHeaderSize = 4;
+
+enum HeadsetButtons
+{
+	VolUp = 0x2,
+	VolDown = 0x4,
+	Mute = 0x8
+};
+
+enum HeadsetMode
+{
+	CinematicMode = 0x0,
+	VRMode = 0x40
+};
+
+struct IMUReport
+{
+	int32_t Timestamp;
+	int16_t Gyroscope[3];
+	int16_t Accelerometer[3];
+};
+
+struct SensorReport
+{
+	uint8_t Buttons;		// 00
+	uint8_t UnknownA;		// 01
+	uint8_t Volume;			// 02
+	uint8_t UnknownB[5];	// 03
+	uint8_t Status;			// 08
+	uint8_t UnknownC[6];	// 09
+	uint8_t Mode;			// 15
+	IMUReport IMU[2];		// 16
+	uint8_t Calibration;	// 48
+	uint8_t Ready;			// 49
+	uint8_t UnknownE[3];	// 50
+	uint8_t VoltageRef;		// 53
+	uint8_t Voltage;		// 54
+	int16_t Proximity;		// 55
+	uint8_t UnknownF[4];	// 57
+	int16_t SamplingPeriod;	// 61
+	uint8_t PacketSequence; // 63
+};
+
+#pragma pack(pop)
 
 }
