@@ -1,10 +1,13 @@
 #pragma once
 
+#include <string.h>
+
 #include "PSVR.h"
 #include "MadgwickAHRS.h"
 
 #ifdef _WINDOWS
 #include <dxgi.h>
+#define strcasecmp _stricmp
 #endif
 
 #include <openvr_driver.h>
@@ -37,7 +40,7 @@ public:
 
 	void *GetComponent(const char *pchComponentNameAndVersion)
 	{
-		if (!_stricmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
+		if (!strcasecmp(pchComponentNameAndVersion, vr::IVRDisplayComponent_Version))
 		{
 			return (vr::IVRDisplayComponent*)this;
 		}
