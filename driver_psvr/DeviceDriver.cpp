@@ -61,7 +61,9 @@ EVRInitError CPSVRDeviceDriver::Activate(vr::TrackedDeviceIndex_t unObjectId)
 	if (!m_pDeviceHandle)
 		return VRInitError_Init_HmdNotFound;
 
+#ifdef _WINDOWS
 	FindHmdDisplay(psvr::EDIDString, &m_pDisplayOutput);
+#endif
 
 	libusb_claim_interface(m_pDeviceHandle, psvr::InterfaceControl);
 	libusb_claim_interface(m_pDeviceHandle, psvr::InterfaceSensor);
