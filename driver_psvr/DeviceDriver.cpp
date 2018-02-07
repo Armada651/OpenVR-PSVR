@@ -1,3 +1,5 @@
+#include <math.h>
+
 #include "DeviceDriver.h"
 #include "DriverLog.h"
 #include "PSVR.h"

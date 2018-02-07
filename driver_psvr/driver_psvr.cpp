@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include "ServerDriver.h"
 #include "Watchdog.h"
 
